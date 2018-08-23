@@ -1,0 +1,12 @@
+[submodule "lib/console"]
+	path = lib/console
+	url = https://github.com/hazardland/console.php.git
+[submodule "lib/termux"]
+	path = lib/termux
+	url = https://github.com/hazardland/termux.php.git
+[submodule "lib/debug"]
+	path = lib/debug
+	url = https://github.com/hazardland/debug.php.git
+[submodule "lib/poloniex"]
+	path = lib/poloniex
+	url = https://github.com/hazardland/poloniex.php.git
