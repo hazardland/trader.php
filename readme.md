@@ -7,4 +7,4 @@ Checkout all submodules to master branch with command inside ./trader dir
 git submodule foreach --recursive git checkout master
 ```
 Runing on Android with Termux
-![](./doc/images/termux_sell_wait.png | width=800)
+<img src="./doc/images/termux_sell_wait.png" width="200"/>
