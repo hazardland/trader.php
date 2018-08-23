@@ -1,6 +1,6 @@
 clone with command
 ```
-git clone --recursive git@github.com:hazardland/trader.php ./trader
+git clone --recursive https://github.com/hazardland/trader.php.git ./trader
 ```
 checkout all submodules with command inside ./trader dir
 ```
