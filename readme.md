@@ -8,4 +8,5 @@ git submodule foreach --recursive git checkout master
 ```
 Runing on Android with Termux
 
-<img src="./doc/images/termux_sell_wait.png" width="400"/>
+<img src="./doc/images/xrp_sell.png" width="400"/>
+<img src="./doc/images/xrp_buy.png" width="400"/>
