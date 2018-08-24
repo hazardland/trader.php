@@ -15,4 +15,3 @@
 		$trader->trade();
 		sleep (10);
 	}
-
