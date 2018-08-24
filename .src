@@ -1,6 +1,6 @@
-/profile/biohazard:master biohazard
 /lib/termux:master termux
 /lib/poloniex:master poloniex
 /lib/debug:master debug
 /lib/console:master console
+/data:master data
 /:master trader

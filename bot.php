@@ -4,14 +4,16 @@
 	include './lib/debug/debug.php';
 	include './lib/console/console.php';
 	include './lib/termux/termux.php';
-	include './lib/poloniex/trader.php';
 
-	include './profile/biohazard/usdt_xrp.php';
+	include './lib/poloniex/market.php';
 
-    $trader = new trader ($config);
+	//include './config.php'; # Uncomment this line
+	include './data/usdt_xrp.php'; # Remove this line
+
+    $market = new market ($config);
 
 	while (true)
 	{
-		$trader->trade();
+		$market->trade();
 		sleep (10);
 	}
