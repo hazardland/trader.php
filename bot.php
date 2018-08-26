@@ -1,14 +1,14 @@
 <?php
 
-	include './lib/poloniex/poloniex.php';
-	include './lib/debug/debug.php';
-	include './lib/console/console.php';
-	include './lib/termux/termux.php';
+	include __DIR__.'/lib/poloniex/poloniex.php';
+	include __DIR__.'/lib/debug/debug.php';
+	include __DIR__.'/lib/console/console.php';
+	include __DIR__.'/lib/termux/termux.php';
 
-	include './lib/poloniex/market.php';
+	include __DIR__.'/lib/poloniex/market.php';
 
-	//include './config.php'; # Uncomment this line
-	include './data/usdt_xrp.php'; # Remove this line
+	//include __DIR__.'/config.php'; # Uncomment this line
+	include __DIR__.'/data/usdt_xrp.php'; # Remove this line
 
 	market::$data_dir = __DIR__.'/data';
 
