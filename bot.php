@@ -10,6 +10,8 @@
 	//include './config.php'; # Uncomment this line
 	include './data/usdt_xrp.php'; # Remove this line
 
+	market::$data_dir = __DIR__.'/data';
+
     $market = new market ($config);
 
 	while (true)
