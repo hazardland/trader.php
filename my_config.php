@@ -6,7 +6,7 @@
     date_default_timezone_set ('Asia/Tbilisi');
 
     /*
-        Warning 1: This values ar just samples!
+        Warning 1: This values ar just samples! Modify with tour currencies
         Warning 2: Bot trades with full balances (Like in case if you want to buy XRP with USDT balance bot will use all USDT amount)
     */
 
@@ -23,7 +23,8 @@
                 Float or integer value
                 1% is recomended
             */
-            'win-percent'=> 1,
+            'buy-win-percent'=> 1,
+            'sell-win-percent'=> 1,
 
             /*
                 If you have on balance 100 XRP wich you bought with 10 USD
