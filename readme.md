@@ -22,7 +22,7 @@ Runing on Android with Termux
 
 **pair** - Your poloniex trading pair like *USTD_XRP* or *BTC_ETC*
 
-*buy-win-percent*,*sell-win-percent* - Minumum much percent you want to win on your next trade. For example if you bought *10 USDT* with *100 XRP* if you set win-percent to *1%*, trader will wait until it can afford *101 XRP* + trading fees on next trade.
+**buy-win-percent**,**sell-win-percent** - Minumum much percent you want to win on your next trade. For example if you bought *10 USDT* with *100 XRP* if you set win-percent to *1%*, trader will wait until it can afford *101 XRP* + trading fees on next trade.
 
 **first-trade-currency**, **first-trade-amount** - These values indicate minumum how much and what currency trader must trade for on the first trader. For example you bought *100 XRP* with *50 USD*, then you might want to get minimum *50 USD* + win percent of *50 USD* on your first trade so you set *first-trade-currency=USDT* and *first-trade-amount=50*
 
