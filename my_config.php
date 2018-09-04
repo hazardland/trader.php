@@ -36,4 +36,5 @@
             */
             'first-trade-currency' => 'USDT',
             'first-trade-amount' => 10,
+            'first-trade-rate' => 0.11111111111,
         ];
