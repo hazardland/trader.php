@@ -5,27 +5,39 @@
 		php bot.php my_config
 	*/
 
-	include __DIR__.'/lib/poloniex/poloniex.php';
-	include __DIR__.'/lib/debug/debug.php';
-	include __DIR__.'/lib/console/console.php';
-	include __DIR__.'/lib/termux/termux.php';
+    include __DIR__.'/lib/debug/debug.php';
+    include __DIR__.'/lib/console/console.php';
+    include __DIR__.'/lib/termux/termux.php';
 
-	include __DIR__.'/lib/poloniex/market.php';
+    include __DIR__.'/lib/trader/trader.php';
+    include __DIR__.'/lib/trader/market.php';
+
+	include __DIR__.'/lib/poloniex/poloniex.php';
 
 	if (!is_array($argv) || !isset($argv[1]) || !file_exists(__DIR__.'/'.$argv[1].'.php'))
 	{
-		echo "[ERROR] Market config not found\n";
+		echo "[][ERROR] Market config not found\n";
 		exit;
 	}
 
 	include __DIR__.'/'.$argv[1].'.php';
 
-	market::$data_dir = __DIR__.'/data';
+    $trader = new \trader\trader
+    (
+    	new poloniex
+    	(
+    		$config['api-key'],
+    		$config['api-secret']
+    	),
+    	$config
 
-    $market = new market ($config);
+    );
 
+    debug ($trader);
+    $trader->markets['my_market_1']->save();
+    exit;
 	while (true)
 	{
 		$market->trade();
-		sleep (10);
+        sleep (10);
 	}
