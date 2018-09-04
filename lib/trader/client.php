@@ -2,6 +2,11 @@
 
 interface client
 {
+    /*
+        return minimum buyable
+    */
+    public function min_total ();
+
     public function get_balances();
 
     /*
