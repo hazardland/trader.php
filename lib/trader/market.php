@@ -58,6 +58,8 @@ class market
     public $sell_rate;
     public $sell_pending;
 
+    public $strategy;
+
     public function __construct (trader $trader, array $config)
     {
         //check config
@@ -128,28 +130,32 @@ class market
         }
         $this->trade_fee = $config['trade-fee']/100;
 
-        //what percent you want to win on sell
-        if (!isset($config['buy-win-percent']))
-        {
-            $this->log ('config','buy-win-percent not set',\console\RED);
-            exit;
-        }
-        $this->buy_win_percent = $config['buy-win-percent']/100;
-
-
-        //what percent you want to win on sell
-        if (!isset($config['sell-win-percent']))
-        {
-            $this->log ('config','sell-win-percent not set',\console\RED);
-            exit;
-        }
-        $this->sell_win_percent = $config['sell-win-percent']/100;
-
         if ($this->min_total($this->from_currency)===false)
         {
             $this->log ('client','no min trade total defined for '.$this->from_currency.' defined',\console\RED);
             exit;
         }
+
+        if (!isset($config['strategy']))
+        {
+            $this->log ('config','strategy not set',\console\RED);
+            exit;
+        }
+
+        if (!class_exists($config['strategy']))
+        {
+            $this->log ('config', 'class '.$config['strategy'].' not exists', \console\RED);
+            exit;
+        }
+
+        if (is_array($config[$config['strategy']::name.'-strategy-config']))
+        {
+            $this->log ('config', $config['strategy']::name.'-strategy-config'.' does not exist in $config', \console\RED);
+            exit;
+        }
+
+
+        $this->strategy = new $config['strategy']($this->trader, $this, $config);
 
         /*
             $this->from_balance
@@ -256,17 +262,21 @@ class market
         }
         return self::number($this->buy_amount()*(1-$this->trade_fee));
     }
+    public function buy_usable ()
+    {
+        return $this->from_balance>=$this->min_total();
+    }
+    public function buy_profitable ()
+    {
+        if ($this->buy_amount(true)>=($this->to_balance_last*(1+$this->buy_win_percent)))
+        {
+            return true;
+        }
+        return false;
+    }
     public function buy ()
     {
-        if ($this->from_balance>=$this->min_total())
-        {
-            $result = $this->client->buy ($this->pair, $this->buy_rate, $this->buy_amount());
-        }
-        else
-        {
-            $result = null;
-            $this->log ("buy", "Not buying total mast be at least ".$this->min_total(), \console\RED);
-        }
+        $result = $this->client->buy ($this->pair, $this->buy_rate, $this->buy_amount());
 
         if (is_array($result) && !isset($result['error']))
         {
@@ -317,17 +327,21 @@ class market
         }
         return self::number($this->sell_total()*(1-$this->trade_fee));
     }
+    public function sell_usable ()
+    {
+        return $this->sell_total()>=$this->min_total();
+    }
+    public function sell_profitable()
+    {
+        if ($this->sell_total(true)>=($this->from_balance_last*(1+$this->sell_win_percent)))
+        {
+            return true;
+        }
+        return false;
+    }
     public function sell ()
     {
-        if ($this->sell_total()>=$this->min_total())
-        {
-            $result = $this->client->sell ($this->pair(), $this->sell_rate, $this->to_balance);
-        }
-        else
-        {
-            $result = null;
-            $this->log ('sell', 'not selling total mast be at least '.$this->min_total(), \console\RED);
-        }
+        $result = $this->client->sell ($this->pair(), $this->sell_rate, $this->to_balance);
 
         if (is_array($result) && !isset($result['error']))
         {

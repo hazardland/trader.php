@@ -11,6 +11,7 @@
 
     include __DIR__.'/lib/trader/trader.php';
     include __DIR__.'/lib/trader/market.php';
+    include __DIR__.'/lib/trader/strategy/dumb.php';
 
 	include __DIR__.'/lib/poloniex/poloniex.php';
 
