@@ -31,6 +31,8 @@ namespace trader;
 
 class market
 {
+    public $active = false;
+
     private $trader;
 
     public $name;
@@ -38,19 +40,13 @@ class market
 
     public $trade_fee;
 
-    public $first_trade_currency;
-    public $first_trade_amount;
-    public $first_trade_rate;
-
     public $from_currency;
     public $from_balance = 0;
     public $from_balance_last = 0;
-    public $buy_win_percent;
 
     public $to_currency;
     public $to_balance = 0;
     public $to_balance_last = 0;
-    public $sell_win_percent;
 
     public $buy_rate;
     public $buy_pending;
@@ -66,7 +62,7 @@ class market
         if (!is_array($config))
         {
             $this->log ('config','no config provided',\console\RED);
-            exit;
+            return;
         }
 
         $this->trader = $trader;
@@ -76,7 +72,7 @@ class market
         if (!isset($config['pair']))
         {
             $this->log ('config','pair not set',\console\RED);
-            exit;
+            return;
         }
         $this->pair = $config['pair'];
 
@@ -85,7 +81,7 @@ class market
         if (!isset($config['from-currency']))
         {
             $this->log ('config','from-currency not set',\console\RED);
-            exit;
+            return;
         }
         $this->from_currency = $config['from-currency'];
 
@@ -93,97 +89,52 @@ class market
         if (!isset($config['to-currency']))
         {
             $this->log ('config','to-currency not set',\console\RED);
-            exit;
+            return;
         }
         $this->to_currency = $config['to-currency'];
-
-
-        //check first trade currency, you buy or sell with this amount first
-        if (!isset($config['first-trade-currency']))
-        {
-            $this->log ('config','first-trade-currency not set',\console\RED);
-            exit;
-        }
-        $this->first_trade_currency = $config['first-trade-currency'];
-
-        //check first trade amount
-        if (!isset($config['first-trade-amount']) || $config['first-trade-amount']<=0)
-        {
-            $this->log ('config','first-trade-amount not set',\console\RED);
-            exit;
-        }
-        $this->first_trade_amount = $config['first-trade-amount'];
-
-        //check first trade rate
-        if (!isset($config['first-trade-rate']) || $config['first-trade-rate']<=0)
-        {
-            $this->log ('config','first-trade-rate not set',\console\RED);
-            exit;
-        }
-        $this->first_trade_rate = $config['first-trade-rate'];
 
         //check first trade rate
         if (!isset($config['trade-fee']))
         {
             $this->log ('config','trade-fee not set',\console\RED);
-            exit;
+            return;
         }
         $this->trade_fee = $config['trade-fee']/100;
 
         if ($this->min_total($this->from_currency)===false)
         {
             $this->log ('client','no min trade total defined for '.$this->from_currency.' defined',\console\RED);
-            exit;
+            return;
         }
 
         if (!isset($config['strategy']))
         {
             $this->log ('config','strategy not set',\console\RED);
-            exit;
+            return;
         }
 
         if (!class_exists($config['strategy']))
         {
             $this->log ('config', 'class '.$config['strategy'].' not exists', \console\RED);
-            exit;
+            return;
         }
 
-        if (is_array($config[$config['strategy']::name.'-strategy-config']))
+        if (!is_array($config[$config['strategy']::key()]))
         {
-            $this->log ('config', $config['strategy']::name.'-strategy-config'.' does not exist in $config', \console\RED);
-            exit;
+            $this->log ('config', $config['strategy']::key().' does not exist in $config', \console\RED);
+            return;
         }
 
+        $this->active = true;
 
-        $this->strategy = new $config['strategy']($this->trader, $this, $config);
-
-        /*
-            $this->from_balance
-            $this->from_balance_last
-            $this->to_balance
-            $this->to_balance_last
-        */
         $this->load ();
 
-        if ($this->from_balance===0 && $this->to_balance===0)
+        if ($this->active)
         {
-            if ($this->first_trade_currency==$this->from_currency)
-            {
-                $this->from_balance = self::number($this->first_trade_amount);
-                $this->to_balance_last = self::number(($this->from_balance/$this->first_trade_rate)*(1-$this->buy_win_percent-$this->trade_fee));
-            }
-            else if ($this->first_trade_currency==$this->to_currency)
-            {
-
-                    $this->to_balance = self::number($this->first_trade_amount);
-                    $this->from_balance_last = self::number(($this->to_balance*$this->first_trade_rate)*(1-$this->sell_win_percent-$this->trade_fee));
-            }
-            else
-            {
-                $this->log ('config','unknown first trade currency',\console\RED);
-                exit;
-            }
+            $this->strategy = new $config['strategy']($this->trader, $this, $config);
+            $this->active = $this->strategy->active();
         }
+
     }
 
     public static function number ($amount, $decimals=8)
@@ -212,7 +163,8 @@ class market
         )
         {
             $this->log ('load',$this->file().' file lacks data',\console\RED);
-            exit;
+            $this->active = false;
+            return false;
         }
         $this->from_balance = $data['from-balance'];
         $this->from_balance_last = $data['from-balance-last'];
@@ -262,17 +214,9 @@ class market
         }
         return self::number($this->buy_amount()*(1-$this->trade_fee));
     }
-    public function buy_usable ()
+    public function buy_available ()
     {
         return $this->from_balance>=$this->min_total();
-    }
-    public function buy_profitable ()
-    {
-        if ($this->buy_amount(true)>=($this->to_balance_last*(1+$this->buy_win_percent)))
-        {
-            return true;
-        }
-        return false;
     }
     public function buy ()
     {
@@ -327,17 +271,9 @@ class market
         }
         return self::number($this->sell_total()*(1-$this->trade_fee));
     }
-    public function sell_usable ()
+    public function sell_available ()
     {
         return $this->sell_total()>=$this->min_total();
-    }
-    public function sell_profitable()
-    {
-        if ($this->sell_total(true)>=($this->from_balance_last*(1+$this->sell_win_percent)))
-        {
-            return true;
-        }
-        return false;
     }
     public function sell ()
     {
@@ -379,6 +315,57 @@ class market
             else
             {
                 $this->log ('sell '.$this->to_currency, 'sell failed: '.$result['error'], \console\RED);
+            }
+        }
+    }
+    public function active()
+    {
+        return $this->active && $this->strategy->active();
+    }
+    public function fetch ()
+    {
+        return true;
+    }
+    public function trade ()
+    {
+        if (!$this->active())
+        {
+            if (!$this->active)
+            {
+                $this->log ('disabled','market is disabled',\console\RED);
+            }
+            if (!$this->strategy->active())
+            {
+                $this->log ('disabled','market strategy is disabled',\console\RED);
+            }
+            return;
+        }
+
+        if (!$this->fetch())
+        {
+            return;
+        }
+
+        if ($this->buy_available() && $this->sell_available())
+        {
+            $this->log ('trade','both buy and sell are avaiable what to do? inspect what is going',\console\RED);
+            return;
+        }
+
+        $this->log ('refresh','refreshing market',\console\GREEN);
+
+        if ($this->buy_available())
+        {
+            if ($this->strategy->buy_profitable())
+            {
+
+            }
+        }
+        else if ($this->sell_available())
+        {
+            if ($this->strategy->sell_profitable())
+            {
+
             }
         }
     }

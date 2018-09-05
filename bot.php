@@ -11,7 +11,7 @@
 
     include __DIR__.'/lib/trader/trader.php';
     include __DIR__.'/lib/trader/market.php';
-    include __DIR__.'/lib/trader/strategy/dumb.php';
+    include __DIR__.'/lib/trader/strategy/simple.php';
 
 	include __DIR__.'/lib/poloniex/poloniex.php';
 
@@ -36,9 +36,8 @@
 
     debug ($trader);
     $trader->markets['my_market_1']->save();
-    exit;
 	while (true)
 	{
-		$market->trade();
+		$trader->trade();
         sleep (10);
 	}

@@ -7,6 +7,7 @@ class trader
     public $client;
     public $data_dir;
     public $markets;
+    public $orders;
     public function __construct ($client, $config)
     {
         $this->client = $client;
@@ -61,6 +62,20 @@ class trader
         else
         {
             echo $message."\n";
+        }
+    }
+    public function fetch ()
+    {
+        return true;
+    }
+    public function trade ()
+    {
+        if ($this->fetch())
+        {
+            foreach ($this->markets as $market)
+            {
+                $market->trade();
+            }
         }
     }
 }
