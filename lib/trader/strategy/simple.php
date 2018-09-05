@@ -122,4 +122,12 @@ class simple
     {
         return $this->active;
     }
+    public function buy_log()
+    {
+
+    }
+    public function sell_log()
+    {
+
+    }
 }

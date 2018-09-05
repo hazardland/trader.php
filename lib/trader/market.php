@@ -356,16 +356,18 @@ class market
 
         if ($this->buy_available())
         {
+            $this->strategy->buy_log ();
             if ($this->strategy->buy_profitable())
             {
-
+                $this->buy();
             }
         }
         else if ($this->sell_available())
         {
+            $this->strategy->sell_log();
             if ($this->strategy->sell_profitable())
             {
-
+                $this->sell();
             }
         }
     }
