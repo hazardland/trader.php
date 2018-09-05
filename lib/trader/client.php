@@ -3,9 +3,14 @@
 interface client
 {
     /*
-        return minimum buyable
+        return min total for market primary currency
     */
-    public function min_total ();
+    public function min ($currency);
+
+    /*
+        return max total for market primary currency
+    */
+    public function max ($currency);
 
     public function get_balances();
 

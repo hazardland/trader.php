@@ -52,8 +52,11 @@ class market
     public $to_balance_last = 0;
     public $sell_win_percent;
 
-    public $sell_rate;
     public $buy_rate;
+    public $buy_pending;
+
+    public $sell_rate;
+    public $sell_pending;
 
     public function __construct (trader $trader, array $config)
     {
@@ -142,7 +145,7 @@ class market
         }
         $this->sell_win_percent = $config['sell-win-percent']/100;
 
-        if ($this->trader->client->min($this->from->currency)===false)
+        if ($this->min_total($this->from_currency)===false)
         {
             $this->log ('client','no min trade total defined for '.$this->from_currency.' defined',\console\RED);
             exit;
@@ -207,8 +210,10 @@ class market
         }
         $this->from_balance = $data['from-balance'];
         $this->from_balance_last = $data['from-balance-last'];
+        $this->buy_pending = $data['buy-pending'];
         $this->to_balance = $data['to-balance'];
         $this->to_balance_last = $data['to-balance-last'];
+        $this->sell_pending = $data['sell-pending'];
         return true;
     }
 
@@ -219,8 +224,10 @@ class market
             [
                 'from-balance'=>$this->from_balance,
                 'from-balance-last'=>$this->from_balance_last,
+                'buy-pending'=>$this->buy_pending,
                 'to-balance'=>$this->to_balance,
-                'to-balance-last'=>$this->to_balance_last
+                'to-balance-last'=>$this->to_balance_last,
+                'sell-pending'=>$this->sell_pending
             ],
             JSON_PRETTY_PRINT
         ));
@@ -233,19 +240,27 @@ class market
 
     public function min_total ()
     {
-        return $this->trader->client->min($this->from->currency);
+        return $this->trader->client->min($this->from_currency);
     }
 
     public function max_total ()
     {
-        return $this->trader->client->max($this->from->currency);
+        return $this->trader->client->max($this->from_currency);
     }
 
+    public function buy_amount ($fee=false)
+    {
+        if (!$fee)
+        {
+            return self::number($this->from_balance/$this->buy_rate);
+        }
+        return self::number($this->buy_amount()*(1-$this->trade_fee));
+    }
     public function buy ()
     {
         if ($this->from_balance>=$this->min_total())
         {
-            $result = $this->client->buy ($this->pair(), $this->buy_rate, $this->buy_amount());
+            $result = $this->client->buy ($this->pair, $this->buy_rate, $this->buy_amount());
         }
         else
         {
@@ -255,8 +270,30 @@ class market
 
         if (is_array($result) && !isset($result['error']))
         {
-            $this->from_balance_last = $this->from_balance;
-            $this->from_balance = 0;
+            $total = 0;
+            $amount = 0;
+            $rate = 0;
+            foreach ($result['trades'] as $trade)
+            {
+                $total += $trade['total'];
+                $amount += $trade['amount'];
+                $rate = $trade['rate'];
+            }
+            $this->log
+            (
+                'buy',
+                "\nBuying ".self::number($amount)." ".$this->to_currency." with ".self::number($total)." ".$this->from_currency.
+                "\n1 ".$this->to_currency." = ".self::number($rate)." ".$this->from_currency,
+                \console\YELLOW
+            );
+            $this->buy_pending = $result['id'];
+            $this->save ();
+            \termux\notification
+            (
+                "BUY ".self::number($amount)." ".$this->to_currency,
+                "WITH ".self::number($total)." ".$this->from_currency." AT ".self::number($rate)." ".$this->from_currency,
+                "FF00FF"
+            );
         }
         else if ($result!==null)
         {
@@ -271,22 +308,53 @@ class market
 
         }
     }
+
+    public function sell_total ($fee=false)
+    {
+        if (!$fee)
+        {
+            return self::number($this->to_balance*$this->sell_rate);
+        }
+        return self::number($this->sell_total()*(1-$this->trade_fee));
+    }
     public function sell ()
     {
-        if ($this->sell_total()>=$this->min_trade())
+        if ($this->sell_total()>=$this->min_total())
         {
             $result = $this->client->sell ($this->pair(), $this->sell_rate, $this->to_balance);
         }
         else
         {
             $result = null;
-            $this->log ("buy", "Not selling total mast be at least ".$this->min_total(), \console\RED);
+            $this->log ('sell', 'not selling total mast be at least '.$this->min_total(), \console\RED);
         }
 
         if (is_array($result) && !isset($result['error']))
         {
-            $this->to_balance_last = $this->to_balance;
-            $this->to_balance = 0;
+            $total = 0;
+            $amount = 0;
+            $rate = 0;
+            foreach ($result['trades'] as $trade)
+            {
+                $total += $trade['total'];
+                $amount += $trade['amount'];
+                $rate = $trade['rate'];
+            }
+            $this->log
+            (
+                'sell',
+                "\nSelling ".self::number($amount)." ".$this->to_currency." for ".self::number($total)." ".$this->from_currency.
+                "\n1 ".$this->to_currency." = ".self::number($rate)." ".$this->from_currency,
+                \console\YELLOW
+            );
+            $this->sell_pending = $result['id'];
+            $this->save ();
+            \termux\notification
+            (
+                "SELL ".self::number($amount)." ".$this->to_currency,
+                "FOR ".self::number($total)." ".$this->from_currency." AT ".self::number($rate)." ".$this->from_currency,
+                "FF00FF"
+            );
         }
         else if ($result!==null)
         {
