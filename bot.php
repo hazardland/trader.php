@@ -2,7 +2,7 @@
 
 	/*
 		Run with command:
-		php bot.php my_config
+		php bot.php config.sample
 	*/
 
     include __DIR__.'/lib/debug/debug.php';

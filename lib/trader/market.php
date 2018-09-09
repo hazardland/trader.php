@@ -528,6 +528,8 @@ class market
         $this->high_rate = $this->trader->rates[$this->pair]['high'];
         $this->low_rate = $this->trader->rates[$this->pair]['low'];
 
+        $this->strategy->fetch ();
+
         return true;
     }
     public function trade ()
@@ -568,10 +570,13 @@ class market
 
         if ($this->buy_available())
         {
-            if ($this->strategy->should_buy())
+            if ($this->strategy->buy_profitable())
             {
                 $this->strategy->buy_log (\console\GREEN);
-                //$this->buy();
+                if ($this->strategy->buy_now())
+                {
+                    $this->buy();
+                }
             }
             else
             {
@@ -580,10 +585,13 @@ class market
         }
         else if ($this->sell_available())
         {
-            if ($this->strategy->should_sell())
+            if ($this->strategy->sell_profitable())
             {
                 $this->strategy->sell_log(\console\GREEN);
-                $this->sell();
+                if ($this->strategy->sell_now())
+                {
+                    $this->sell();
+                }
             }
             else
             {

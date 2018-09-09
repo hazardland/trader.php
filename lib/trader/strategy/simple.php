@@ -29,6 +29,8 @@ class simple
     public $buy_win_percent;
     public $sell_win_percent;
 
+    public $rate_trend_round = 4;
+
     public $sell_rate_trend_last;
     public $sell_rate_trend_changed = false;
     public $sell_rate_trend;
@@ -87,7 +89,7 @@ class simple
     {
         return number_format ($amount, $decimals, '.', '');
     }
-    public function should_buy ()
+    public function buy_profitable ()
     {
         if ($this->market->buy_amount(true)>=($this->market->to_balance_last*(1+$this->buy_win_percent)))
         {
@@ -95,9 +97,25 @@ class simple
         }
         return false;
     }
-    public function should_sell()
+    public function buy_now ()
+    {
+        if ($this->buy_profitable() && $this->buy_rate_trend!==self::DOWN)
+        {
+            return true;
+        }
+        return false;
+    }
+    public function sell_profitable()
     {
         if ($this->market->sell_total(true)>=($this->market->from_balance_last*(1+$this->sell_win_percent)))
+        {
+            return true;
+        }
+        return false;
+    }
+    public function sell_now ()
+    {
+        if ($this->sell_profitable() && $this->sell_rate_trend!==self::UP)
         {
             return true;
         }
@@ -183,7 +201,11 @@ class simple
     {
         return $this->active;
     }
-    //BUY XRP
+    public function fetch ()
+    {
+        $this->sell_rate_trend_save();
+        $this->buy_rate_trend_save();
+    }
     public function buy_log ($color)
     {
 echo
@@ -205,7 +227,6 @@ echo
         )."\n";
 
     }
-    //SELL XRP
     public function sell_log ($color)
     {
 echo
