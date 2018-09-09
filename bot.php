@@ -35,7 +35,6 @@
     );
 
     debug ($trader);
-    $trader->markets['my_market_1']->save();
 	while (true)
 	{
 		$trader->trade();

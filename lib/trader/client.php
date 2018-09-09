@@ -12,6 +12,17 @@ interface client
     */
     public function max ($currency);
 
+    /*
+        GET BALANCES
+        ---------------------------------
+        return false - on general error
+        return ['error'=>'error message'] - on api error
+        return
+        [
+            'CUR1' => xx.xx,
+            'CUR2' => xx.xx
+        ]
+    */
     public function get_balances();
 
     /*
@@ -55,13 +66,15 @@ interface client
         [
             'CUR1_CUR2' =>
             [
-                0 =>
+                id =>
                 [
-                    'id' => xx,
-                    'rate' => xx.xx,
-                    'amount' => xx.xx, // what amount you buy or for what amount you sold,
-                    'total' => xx.xx // with what amount you buy or what amount you sold,
-                    'fee' => xx.xx // trade fee included in amount (amount-fee=gained amount)
+                    0 =>
+                    [
+                        'rate' => xx.xx,
+                        'amount' => xx.xx, // what amount you buy or for what amount you sold,
+                        'total' => xx.xx // with what amount you buy or what amount you sold,
+                        'fee' => xx.xx // trade fee included in amount (amount-fee=gained amount)
+                    ]
                 ],
             ],
         ] - on success

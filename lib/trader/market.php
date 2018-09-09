@@ -10,20 +10,27 @@ namespace trader;
         'api-secret'=> '',
         'markets' =>
         [
-            'my_market_1' =>
+            'usdt_xrp' =>
             [
                 'pair' => 'USDT_XRP',
 
                 'from-currency' => 'USDT',
                 'to-currency' => 'XRP',
 
-                'first-trade-currency' => 'USDT',
-                'first-trade-amount'  => '10',
-                'first-trade-rate' => '0.33100000',
+                'start-currency' => 'USDT',
+                'start-amount'  => '234',
 
                 'trade-fee' => 0.2,
-                'buy-win-percent' => 1,
-                'sell-win-percent' => 1
+
+                'strategy' => '\trader\strategy\simple',
+
+                'simple-strategy-config' =>
+                [
+                    'first-trade-rate' => '0.33100000',
+
+                    'buy-win-percent' => 1,
+                    'sell-win-percent' => 1
+                ]
             ]
         ]
     ]
@@ -40,19 +47,26 @@ class market
 
     public $trade_fee;
 
+    public $start_currency;
+    public $start_amount;
+
     public $from_currency;
     public $from_balance = 0;
-    public $from_balance_last = 0;
+    public $from_balance_first;
+    public $from_balance_last;
 
     public $to_currency;
     public $to_balance = 0;
-    public $to_balance_last = 0;
+    public $to_balance_first;
+    public $to_balance_last;
+
+    public $buy_pending;
+    public $sell_pending;
 
     public $buy_rate;
-    public $buy_pending;
-
     public $sell_rate;
-    public $sell_pending;
+    public $high_rate;
+    public $low_rate;
 
     public $strategy;
 
@@ -107,6 +121,40 @@ class market
             return;
         }
 
+        //check first trade currency, you buy or sell with this amount first
+        if (!isset($config['start-currency']))
+        {
+            $this->log ('config','start-currency not set',\console\RED);
+            return;
+        }
+        $this->start_currency = $config['start-currency'];
+
+        //check first trade amount
+        if (!isset($config['start-amount']) || $config['start-amount']<=0)
+        {
+            $this->log ('config','start-amount not set',\console\RED);
+            return;
+        }
+        $this->start_amount = $config['start-amount'];
+
+        if ($this->start_currency==$this->from_currency)
+        {
+            $this->from_balance = self::number($this->start_amount);
+            $this->from_balance_first = $this->from_balance;
+            $this->from_balance_last = $this->from_balance;
+        }
+        else if ($this->start_currency==$this->to_currency)
+        {
+            $this->to_balance = self::number($this->start_amount);
+            $this->to_balance_first = $this->to_balance;
+            $this->to_balance_last = $this->to_balance;
+        }
+        else
+        {
+            $this->log ('config','unknown start-currency',\console\RED);
+            return;
+        }
+
         if (!isset($config['strategy']))
         {
             $this->log ('config','strategy not set',\console\RED);
@@ -125,15 +173,22 @@ class market
             return;
         }
 
+        $this->strategy = new $config['strategy']($this->trader, $this, $config);
+        $this->active = $this->strategy->active();
+
+        if ($this->to_balance_first===null)
+        {
+            $this->to_balance_first = $this->to_balance_last;
+        }
+        if ($this->from_balance_first===null)
+        {
+            $this->from_balance_first = $this->from_balance_last;
+        }
+
         $this->active = true;
 
         $this->load ();
 
-        if ($this->active)
-        {
-            $this->strategy = new $config['strategy']($this->trader, $this, $config);
-            $this->active = $this->strategy->active();
-        }
 
     }
 
@@ -167,9 +222,11 @@ class market
             return false;
         }
         $this->from_balance = $data['from-balance'];
+        $this->from_balance_first = $data['from-balance-first'];
         $this->from_balance_last = $data['from-balance-last'];
         $this->buy_pending = $data['buy-pending'];
         $this->to_balance = $data['to-balance'];
+        $this->to_balance_first = $data['to-balance-first'];
         $this->to_balance_last = $data['to-balance-last'];
         $this->sell_pending = $data['sell-pending'];
         return true;
@@ -177,18 +234,27 @@ class market
 
     public function save ()
     {
-        $this->log ('SAVE','saving into '.$this->file(),\console\GREEN);
+        if (
         file_put_contents ($this->file(), json_encode(
             [
                 'from-balance'=>$this->from_balance,
+                'from-balance-first'=>$this->from_balance_first,
                 'from-balance-last'=>$this->from_balance_last,
                 'buy-pending'=>$this->buy_pending,
                 'to-balance'=>$this->to_balance,
+                'to-balance-first'=>$this->to_balance_first,
                 'to-balance-last'=>$this->to_balance_last,
                 'sell-pending'=>$this->sell_pending
             ],
             JSON_PRETTY_PRINT
-        ));
+        )))
+        {
+            $this->log ('SAVE','saving into '.$this->file(),\console\GREEN);
+        }
+        else
+        {
+            $this->log ('SAVE','failed saving into '.$this->file(),\console\RED);
+        }
     }
 
     public function log ($title, $message, $color=null)
@@ -220,7 +286,7 @@ class market
     }
     public function buy ()
     {
-        $result = $this->client->buy ($this->pair, $this->buy_rate, $this->buy_amount());
+        $result = $this->trader->client->buy ($this->pair, $this->buy_rate, $this->buy_amount());
 
         if (is_array($result) && !isset($result['error']))
         {
@@ -277,7 +343,7 @@ class market
     }
     public function sell ()
     {
-        $result = $this->client->sell ($this->pair(), $this->sell_rate, $this->to_balance);
+        $result = $this->trader->client->sell ($this->pair, $this->sell_rate, $this->to_balance);
 
         if (is_array($result) && !isset($result['error']))
         {
@@ -324,6 +390,144 @@ class market
     }
     public function fetch ()
     {
+        //debug ($this->trader->orders[$this->pair]);
+        //$this->buy_pending = "129019584389";
+        //$this->buy_pending = "128926488578";
+        if ($this->buy_pending)
+        {
+            if
+            (
+                isset($this->trader->orders[$this->pair][$this->buy_pending]) &&
+                is_array($this->trader->orders[$this->pair][$this->buy_pending]) &&
+                count($this->trader->orders[$this->pair][$this->buy_pending])
+            )
+            {
+                $orders = '';
+                foreach ($this->trader->orders[$this->pair][$this->buy_pending] as $order)
+                {
+                    $orders .= ' '.$order['type'].' '.$order['amount'].' '.$this->to_currency.' rate '.$order['rate'].' '.$this->from_currency;
+                }
+                $this->log ('skip','pending orders:'.$orders,\console\YELLOW);
+                return false;
+            }
+            else
+            {
+                //debug ($this->trader->client->get_trades()['USDT_DASH']);
+                //exit;
+                $result = $this->trader->client->get_trades ($this->buy_pending);
+                //debug ($result);
+                if (!is_array($result) || (is_array($result) && isset($result['error'])))
+                {
+                    $this->log ('error',isset($result['error'])?$result['error']:'error retrieving trades for order '.$this->buy_pending,\console\RED);
+                    return false;
+                }
+                else
+                {
+                    $data = [];
+                    $data['type'] = 'buy';
+                    $data['amount'] = 0;
+                    $data['total'] = 0;
+                    $data['rate'] = 0;
+                    foreach ($result as $trade)
+                    {
+                        $data['amount'] = self::number($data['amount']+$trade['amount'] * (1-$trade['fee']));
+                        $data['total'] = self::number($data['total']+$trade['total']);
+                        $data['rate'] = $trade['rate'];
+                    }
+                    $data['profit'] = self::number($data['amount']-$this->to_balance_last);
+                    debug ($data);
+
+                    $this->from_balance_last = $this->from_balance;
+                    $this->from_balance = self::number ($this->from_balance-$data['total']);
+                    $this->from_balance_last = self::number ($this->from_balance_last-$this->from_balance);
+                    $this->to_balance = $data['amount'];
+                    $this->buy_pending = null;
+                    $this->save();
+
+                    file_put_contents($this->trader->data_dir($this->name.'.trade.csv'),'"'.implode('","',$data).'"'."\n",FILE_APPEND);
+
+                }
+            }
+        }
+
+        //debug ($this->trader->orders[$this->pair]);
+        //$this->sell_pending = "129019584389";
+        //$this->sell_pending = "128926488578";
+        if ($this->sell_pending)
+        {
+            if
+            (
+                isset($this->trader->orders[$this->pair][$this->sell_pending]) &&
+                is_array($this->trader->orders[$this->pair][$this->sell_pending]) &&
+                count($this->trader->orders[$this->pair][$this->sell_pending])
+            )
+            {
+                $orders = '';
+                foreach ($this->trader->orders[$this->pair][$this->sell_pending] as $order)
+                {
+                    $orders .= ' '.$order['type'].' '.$order['amount'].' '.$this->to_currency.' rate '.$order['rate'].' '.$this->from_currency;
+                }
+                $this->log ('skip','pending orders:'.$orders,\console\YELLOW);
+                return false;
+            }
+            else
+            {
+                //debug ($this->trader->client->get_trades()['USDT_DASH']);
+                //exit;
+                $result = $this->trader->client->get_trades ($this->sell_pending);
+                //debug ($result);
+                if (!is_array($result) || (is_array($result) && isset($result['error'])))
+                {
+                    $this->log ('error',isset($result['error'])?$result['error']:'error retrieving trades for order '.$this->sell_pending,\console\RED);
+                    return false;
+                }
+                else
+                {
+                    $data = [];
+                    $data['type'] = 'sell';
+                    $data['amount'] = 0;
+                    $data['total'] = 0;
+                    $data['rate'] = 0;
+                    foreach ($result as $trade)
+                    {
+                        $data['amount'] = self::number($data['amount']+$trade['amount']);
+                        $data['total'] = self::number($data['total']+$trade['total'] * (1-$trade['fee']));
+                        $data['rate'] = $trade['rate'];
+                    }
+                    $data['profit'] = self::number($data['total']-$this->from_balance_last);
+                    debug ($data);
+
+                    $this->to_balance_last = $this->to_balance;
+                    $this->to_balance = self::number ($this->to_balance-$data['amount']);
+                    $this->to_balance_last = self::number ($this->to_balance_last-$this->to_balance);
+                    $this->from_balance = $data['total'];
+                    $this->sell_pending = null;
+                    $this->save();
+
+                    file_put_contents($this->trader->data_dir($this->name.'.trade.csv'),'"'.implode('","',$data).'"'."\n",FILE_APPEND);
+
+                }
+            }
+        }
+
+        if
+        (
+            !isset($this->trader->rates[$this->pair]) ||
+            !isset($this->trader->rates[$this->pair]['buy']) ||
+            !isset($this->trader->rates[$this->pair]['sell']) ||
+            !isset($this->trader->rates[$this->pair]['high']) ||
+            !isset($this->trader->rates[$this->pair]['low'])
+        )
+        {
+            $this->log ('fetch','rates not provided',\console\RED);
+            return false;
+        }
+
+        $this->buy_rate = $this->trader->rates[$this->pair]['buy'];
+        $this->sell_rate = $this->trader->rates[$this->pair]['sell'];
+        $this->high_rate = $this->trader->rates[$this->pair]['high'];
+        $this->low_rate = $this->trader->rates[$this->pair]['low'];
+
         return true;
     }
     public function trade ()
@@ -341,8 +545,17 @@ class market
             return;
         }
 
+        $this->log ('fetch','fetching market',\console\GREEN);
+
         if (!$this->fetch())
         {
+            $this->log ('fetch','fetch failed',\console\RED);
+            return;
+        }
+
+        if (!$this->buy_rate || !$this->sell_rate)
+        {
+            $this->log ('fetch','rates not set',\console\MAROON);
             return;
         }
 
@@ -352,22 +565,29 @@ class market
             return;
         }
 
-        $this->log ('refresh','refreshing market',\console\GREEN);
 
         if ($this->buy_available())
         {
-            $this->strategy->buy_log ();
-            if ($this->strategy->buy_profitable())
+            if ($this->strategy->should_buy())
             {
-                $this->buy();
+                $this->strategy->buy_log (\console\GREEN);
+                //$this->buy();
+            }
+            else
+            {
+                $this->strategy->buy_log (\console\BLUE);
             }
         }
         else if ($this->sell_available())
         {
-            $this->strategy->sell_log();
-            if ($this->strategy->sell_profitable())
+            if ($this->strategy->should_sell())
             {
+                $this->strategy->sell_log(\console\GREEN);
                 $this->sell();
+            }
+            else
+            {
+                $this->strategy->sell_log(\console\PINK);
             }
         }
     }

@@ -66,6 +66,33 @@ class trader
     }
     public function fetch ()
     {
+        $this->orders = [];
+
+        foreach ($this->markets as $market)
+        {
+            if ($market->sell_pending || $market->buy_pending)
+            {
+                $result = $this->client->get_orders ();
+                if (!is_array($result) || (is_array($result) && isset($result['error'])))
+                {
+                    $this->log ('error', isset($result['error'])?$result['error']:'Error retrieving orders', \console\RED);
+                    return false;
+                }
+                $this->orders = $result;
+                break;
+            }
+        }
+
+        $this->rates = [];
+
+        $result = $this->client->get_rates ();
+        if (!is_array($result) || (is_array($result) && isset($result['error'])))
+        {
+            $this->log ('error', isset($result['error'])?$result['error']:'Error retrieving rates', \console\RED);
+            return false;
+        }
+        $this->rates = $result;
+
         return true;
     }
     public function trade ()
