@@ -547,7 +547,7 @@ class market
             return;
         }
 
-        $this->log ('fetch','fetching market',\console\GREEN);
+        $this->log ('fetch','',\console\WHITE);
 
         if (!$this->fetch())
         {
@@ -564,6 +564,11 @@ class market
         if ($this->buy_available() && $this->sell_available())
         {
             $this->log ('trade','both buy and sell are avaiable what to do? inspect what is going',\console\RED);
+            return;
+        }
+        else if (!$this->buy_available() && !$this->sell_available())
+        {
+            $this->log ('trade','both buy and sell are not available check first trade totals',\console\RED);
             return;
         }
 
