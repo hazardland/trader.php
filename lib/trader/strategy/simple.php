@@ -25,6 +25,7 @@ class simple
     private $market;
 
     public $first_trade_rate;
+    public $first_trade_margin;
 
     public $buy_win_percent;
     public $sell_win_percent;
@@ -62,20 +63,43 @@ class simple
         }
         $this->sell_win_percent = $config[self::key()]['sell-win-percent']/100;
 
-        //check first trade rate
-        if (!isset($config[self::key()]['first-trade-rate']) || $config[self::key()]['first-trade-rate']<=0)
+        if (isset($config[self::key()]['first-trade-margin']))
         {
-            $this->market->log ('config','first-trade-rate not set',\console\RED);
+            $this->first_trade_margin = $config[self::key()]['first-trade-margin'];
+        }
+
+        //check first trade rate
+        if ((!isset($config[self::key()]['first-trade-rate']) || $config[self::key()]['first-trade-rate']<=0) && $this->first_trade_margin===null)
+        {
+            $this->market->log ('config','first-trade-rate or first-trade-margin is not set',\console\RED);
             return;
         }
-        $this->first_trade_rate = $config[self::key()]['first-trade-rate'];
+        if (isset($config[self::key()]['first-trade-rate']))
+        {
+            $this->first_trade_rate = $config[self::key()]['first-trade-rate'];
+        }
+
+        if ($this->first_trade_rate===null && $this->first_trade_margin!==null && !$this->market->fetch())
+        {
+            $this->market->log ('config','market fetch failded for first-trade-margin',\console\RED);
+            return;
+        }
 
         if ($this->market->start_currency==$this->market->from_currency)
         {
+            if ($this->first_trade_rate===null)
+            {
+                $this->first_trade_rate = self::number($this->market->low_rate+(($this->market->high_rate-$this->market->low_rate)/100)*$this->first_trade_margin);
+            }
             $this->market->to_balance_last = self::number(($this->market->from_balance/$this->first_trade_rate)*(1-$this->buy_win_percent-$this->market->trade_fee));
+
         }
         else if ($this->market->start_currency==$this->market->to_currency)
         {
+            if ($this->first_trade_rate===null)
+            {
+                $this->first_trade_rate = self::number($this->market->low_rate+(($this->market->high_rate-$this->market->low_rate)/100)*(100-$this->first_trade_margin));
+            }
             $this->market->from_balance_last = self::number(($this->market->to_balance*$this->first_trade_rate)*(1-$this->sell_win_percent-$this->market->trade_fee));
         }
 

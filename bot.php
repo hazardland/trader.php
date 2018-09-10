@@ -34,10 +34,10 @@
 
     );
 
-    debug ($trader);
+    //debug ($trader);
 	while (true)
 	{
-        echo "\n";
-		$trader->trade();
         sleep (10);
+        $trader->trade();
+        echo "\n";
 	}

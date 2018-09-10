@@ -38,6 +38,8 @@ namespace trader;
 
 class market
 {
+    private $debug = true;
+
     public $active = false;
 
     private $trader;
@@ -388,6 +390,26 @@ class market
     {
         return $this->active && $this->strategy->active();
     }
+    public function fetch_rates ()
+    {
+        if
+        (
+            !isset($this->trader->rates[$this->pair]) ||
+            !isset($this->trader->rates[$this->pair]['buy']) ||
+            !isset($this->trader->rates[$this->pair]['sell']) ||
+            !isset($this->trader->rates[$this->pair]['high']) ||
+            !isset($this->trader->rates[$this->pair]['low'])
+        )
+        {
+            $this->log ('fetch','rates not provided',\console\RED);
+            return false;
+        }
+
+        $this->buy_rate = $this->trader->rates[$this->pair]['buy'];
+        $this->sell_rate = $this->trader->rates[$this->pair]['sell'];
+        $this->high_rate = $this->trader->rates[$this->pair]['high'];
+        $this->low_rate = $this->trader->rates[$this->pair]['low'];
+    }
     public function fetch ()
     {
         //debug ($this->trader->orders[$this->pair]);
@@ -528,7 +550,10 @@ class market
         $this->high_rate = $this->trader->rates[$this->pair]['high'];
         $this->low_rate = $this->trader->rates[$this->pair]['low'];
 
-        $this->strategy->fetch ();
+        if ($this->strategy!==null)
+        {
+            $this->strategy->fetch ();
+        }
 
         return true;
     }
@@ -580,7 +605,7 @@ class market
                 $this->strategy->buy_log (\console\GREEN);
                 if ($this->strategy->buy_now())
                 {
-                    $this->buy();
+                    if (!$this->debug) $this->buy();
                 }
             }
             else
@@ -595,7 +620,7 @@ class market
                 $this->strategy->sell_log(\console\GREEN);
                 if ($this->strategy->sell_now())
                 {
-                    $this->sell();
+                    if (!$this->debug) $this->sell();
                 }
             }
             else

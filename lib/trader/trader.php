@@ -6,7 +6,7 @@ class trader
 {
     public $client;
     public $data_dir;
-    public $markets;
+    public $markets = [];
     public $orders;
     public function __construct ($client, $config)
     {
@@ -35,6 +35,9 @@ class trader
         {
             mkdir($this->data_dir('log'), 0777, true);
         }
+
+        $this->fetch ();
+
         foreach ($config['markets'] as $key => $value)
         {
             $this->markets[$key] = new \trader\market ($this,['name'=>$key]+$value);
