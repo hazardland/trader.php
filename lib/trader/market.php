@@ -38,7 +38,7 @@ namespace trader;
 
 class market
 {
-    private $debug = true;
+    private $debug = false;
 
     public $active = false;
 
