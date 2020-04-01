@@ -7,15 +7,15 @@
         'api-secret' => '',
         'markets' =>
         [
-            'usdt_doge' =>
+            'eur_usd' =>
             [
-                'pair' => 'USDT_DOGE',
+                'pair' => 'EURUSD',
 
-                'from-currency' => 'USDT',
-                'to-currency' => 'DOGE',
+                'from-currency' => 'EUR',
+                'to-currency' => 'USD',
 
-                'start-currency' => 'DOGE',
-                'start-amount'  => '5117.08568500',
+                'start-currency' => 'USD',
+                'start-amount'  => '1.11000',
 
                 'trade-fee' => 0.2,
 
@@ -23,7 +23,7 @@
 
                 'simple-strategy-config' =>
                 [
-                    'first-trade-rate' => '0.0057',
+                    'first-trade-rate' => '0.0060',
 
                     'buy-win-percent' => 1,
                     'sell-win-percent' => 1
